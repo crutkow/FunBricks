@@ -1,0 +1,32 @@
+{
+  "images": {
+    "spriteSheet": "/sprite_sheet.png",
+    "sprites": {
+      "brick-red": { "x": 0, "y": 0, "w": 64, "h": 32 },
+      "brick-orange": { "x": 64, "y": 0, "w": 64, "h": 32 },
+      "brick-yellow": { "x": 128, "y": 0, "w": 64, "h": 32 },
+      "brick-green": { "x": 192, "y": 0, "w": 64, "h": 32 },
+      "brick-cyan": { "x": 256, "y": 0, "w": 64, "h": 32 },
+      "brick-blue": { "x": 320, "y": 0, "w": 64, "h": 32 },
+      "brick-purple": { "x": 384, "y": 0, "w": 64, "h": 32 },
+      "brick-magenta": { "x": 448, "y": 0, "w": 64, "h": 32 },
+
+      "paddle-normal": { "x": 0, "y": 32, "w": 64, "h": 16 },
+      "paddle-long": { "x": 64, "y": 32, "w": 96, "h": 16 },
+
+      "ball": { "x": 0, "y": 48, "w": 16, "h": 16 },
+      "heart": { "x": 16, "y": 48, "w": 16, "h": 16 },
+      "speed": { "x": 32, "y": 48, "w": 16, "h": 16 },
+      "mult-2x": { "x": 48, "y": 48, "w": 32, "h": 16 }
+    }
+  },
+
+  "sounds": [
+    { "name": "click", "file": "/sounds/click.wav" },
+    { "name": "collect", "file": "/sounds/collect.wav" },
+    { "name": "hit1", "file": "/sounds/hit1.wav" },
+    { "name": "hit2", "file": "/sounds/hit2.wav" },
+    { "name": "point", "file": "/sounds/point.wav" },
+    { "name": "win", "file": "/sounds/win.wav" }
+  ]
+}
