@@ -1,29 +1,32 @@
-import assets from '../assets/assets.json';
-
 export class AudioManager {
   private sounds: Map<string, HTMLAudioElement> = new Map();
 
-  async load(): Promise<void> {
+  async load(manifestPath: string = '/assets.json'): Promise<void> {
+    const response = await fetch(manifestPath);
+    if (!response.ok) {
+      throw new Error(`Failed to load audio manifest from ${manifestPath}`);
+    }
+    const assets = await response.json();
     const list = (assets as any).sounds || [];
     const promises: Promise<void>[] = [];
+
     for (const s of list) {
       const p = new Promise<void>((resolve) => {
         const audio = new Audio(s.file);
         audio.preload = 'auto';
-        // resolve when ready or on error so load doesn't hang
         const onDone = () => resolve();
         audio.addEventListener('canplaythrough', onDone, { once: true });
         audio.addEventListener('error', onDone, { once: true });
         try {
           audio.load();
         } catch (e) {
-          // ignore
           resolve();
         }
         this.sounds.set(s.name, audio);
       });
       promises.push(p);
     }
+
     await Promise.all(promises);
   }
 

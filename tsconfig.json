@@ -13,8 +13,7 @@
     "jsx": "preserve",
     "lib": ["DOM", "ES2020"],
     "types": ["vite/client"],
-    "typeRoots": ["./node_modules/@types", "./src/types"],
     "resolveJsonModule": true
   },
-  "include": ["src", "tests"]
+  "include": ["public/src", "tests"]
 }
