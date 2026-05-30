@@ -1,17 +1,19 @@
 # AI Agent Project Configuration Instructions
 
 Purpose
-- Provide a step-by-step recipe an AI agent can run to convert a minimal repo into a Vite + TypeScript HTML5 game scaffold using `proton-engine`, with sprite and audio managers and Playwright tests.
+- Provide a step-by-step recipe for an AI agent to convert a minimal repo into a Vite + TypeScript HTML5 game scaffold using `proton-engine`, with runtime assets in `public/`, sprite and audio managers, and Playwright tests.
 
 Overview
 - Add dependencies and dev-dependencies: `proton-engine`, `vite`, `typescript`, `@playwright/test`.
+- Use `public/` as the app root and serve runtime assets from `public/assets`.
 - Add Vite and TypeScript configs, an HTML shell, game bootstrap, sprite/audio managers, and Playwright tests.
 
 Detailed Steps
 
 1. Inspect repository
 
-- Check for `package.json`, `src/`, `assets/`, `tests/`. Create `package.json` if missing.
+- Check for `package.json`, `public/`, and `tests/`. Create `package.json` if missing.
+- If the app source is not under `public/src`, move it there and place static assets into `public/assets`.
 
 2. Install dependencies and scripts
 
@@ -44,44 +46,53 @@ npm install -D vite typescript @playwright/test
     "target": "ES2020",
     "module": "ESNext",
     "lib": ["DOM", "ES2020"],
+    "moduleResolution": "Bundler",
     "resolveJsonModule": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "types": ["vite/client"]
   },
-  "include": ["src", "tests"]
+  "include": ["public/src", "tests"]
 }
 ```
 
-- Create `vite.config.ts` (serve on `127.0.0.1:4173` recommended).
+- Create `vite.config.ts` with `root: 'public'`, `publicDir: 'assets'`, and output to `../dist`.
 
 4. Add app scaffolding
 
-- Create `index.html` with a `#game-root` element and module script to `/src/main.ts`.
-- Create `src/main.ts` to locate `#game-root`, instantiate `Game` and call `await game.init()`.
+- Create `public/index.html` with a `#game-root` element and a module script to `/src/main.ts`.
+- Create `public/src/main.ts` to locate `#game-root`, instantiate `Game`, and call `game.init()`.
 
 5. Implement core modules
 
-- `src/Game.ts`: create and size a canvas, instantiate `Proton`, `CanvasRenderer`, and `Emitter`, add an animation loop that calls `proton.update()` and draws sprites on the canvas, and provide a `resize()` method.
-- `src/SpriteManager.ts`: load `/sprite_sheet.png` (from `public/`), expose `draw(ctx, name, x, y, scale)` and hold sprite frame data.
-- `src/AudioManager.ts`: import `assets/assets.json`, preload `Audio` objects for each sound, expose `play(name)`.
+- `public/src/Game.ts`: create and size a canvas, instantiate `Proton`, `CanvasRenderer`, and `Emitter`, add an animation loop that calls `proton.update()` and draws sprites on the canvas, and provide a `resize()` method.
+- `public/src/SpriteManager.ts`: load `/sprite_sheet.png` from the public assets root, expose `draw(ctx, name, x, y, scale)`, and hold sprite frame data.
+- `public/src/AudioManager.ts`: load `/assets.json` at runtime, preload `Audio` objects for each sound entry, and expose `play(name)`.
 
 6. Type definitions
 
-- If `proton-engine` lacks types, add `src/types/proton-engine.d.ts` declaring minimal classes (`Proton`, `Emitter`, `CanvasRenderer`, etc.).
+- If `proton-engine` lacks types, add `public/src/types/proton-engine.d.ts` declaring the minimal API used by the game.
 
 7. Assets manifest and public assets
 
-- Create `assets/assets.json` describing sprite frames and sound files.
-- Copy runtime assets into `public/` (e.g. `public/sprite_sheet.png`, `public/sounds/*`) and reference them in the manifest as `/sprite_sheet.png` and `/sounds/*`.
+- Create `public/assets/assets.json` describing sprite frames and sound files.
+- Place runtime assets in `public/assets`, such as:
+  - `public/assets/sprite_sheet.png`
+  - `public/assets/sounds/click.wav`
+  - `public/assets/sounds/*.wav`
+- The manifest should reference runtime files from the served root, for example `/sprite_sheet.png` and `/sounds/click.wav`.
 
 8. Integrate loading and interaction
 
-- In `Game.init()`, `await spriteManager.load()` and `await audioManager.load()`.
+- In `Game.init()`, call `await spriteManager.load()` and `await audioManager.load()`.
 - Add a user interaction (click) to unlock audio and play a short sound.
 
 9. Playwright configuration and tests
 
 - `playwright.config.js`: set `testDir: './tests'`, `use.baseURL: 'http://127.0.0.1:4173'`, and `webServer` to run `npm run dev` with `reuseExistingServer: true`.
-- Add `tests/game.spec.js` with smoke tests: page loads, `#game-canvas` exists, canvas is readable via `getImageData`, and optionally audio objects are present on `window.game`.
+- Add `tests/example.spec.js` or `tests/game.spec.js` with smoke tests that verify:
+  - the page loads and title is correct,
+  - `#game-canvas` exists and is visible,
+  - the canvas can be read via `getImageData`,
+  - optional sprite rendering and animation state.
 
 10. Verify and CI
 
@@ -95,23 +106,24 @@ npx playwright test --config playwright.config.js
 npx playwright install # CI step to install browsers
 ```
 
-- Note autoplay restrictions: play audio in response to user gestures.
+- Note autoplay restrictions: only play audio from a user gesture to avoid browser policy failures.
 
 Outputs
-- Files the agent should create or update: `index.html`, `vite.config.ts`, `tsconfig.json`, `src/main.ts`, `src/Game.ts`, `src/SpriteManager.ts`, `src/AudioManager.ts`, `src/types/proton-engine.d.ts` (if needed), `assets/assets.json`, `public/*`, and `tests/*`.
+- Files the agent should create or update: `public/index.html`, `vite.config.ts`, `tsconfig.json`, `public/src/main.ts`, `public/src/Game.ts`, `public/src/SpriteManager.ts`, `public/src/AudioManager.ts`, `public/src/types/proton-engine.d.ts` (if needed), `public/assets/assets.json`, and `tests/*`.
 
 Tips and gotchas
-- Prefer `public/` for static runtime assets so Vite serves them at `/...`.
-- Use `resolveJsonModule` for static manifests; otherwise fetch the manifest at runtime.
-- Keep the `AudioManager` resilient to autoplay errors and fallback gracefully.
-- Replace local `d.ts` when official types become available.
+- Use `public/` as the Vite root and `public/assets` for static runtime assets.
+- Serve the manifest from `/assets.json` when using `publicDir: 'assets'`.
+- Avoid importing `assets.json` directly from TS if you want runtime flexibility; fetch it from the served URL instead.
+- Keep `dist/` gitignored because it is generated build output.
+- Keep the `AudioManager` resilient to playback failures and unsupported browsers.
 
 Commit & push
 - After verifying locally, commit and push with a descriptive message, e.g.:
 
 ```bash
 git add -A
-git commit -m "feat: scaffold Proton+Vite game template"
+git commit -m "fix: update public-root Vite game scaffold and asset loading"
 git push origin HEAD
 ```
 
