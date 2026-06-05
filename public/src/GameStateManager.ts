@@ -43,8 +43,8 @@ export class GameStateManager {
     // Reset ball position on paddle
     gameState.ball.x = gameState.paddle.x + gameState.paddle.width / 2;
     gameState.ball.y = gameState.paddle.y - 20;
-    gameState.ball.vx = 2;
-    gameState.ball.vy = -3;
+    gameState.ball.vx = 20;
+    gameState.ball.vy = -30;
 
     // Reset game state to menu
     gameState.gameState = 'menu';
