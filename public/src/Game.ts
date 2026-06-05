@@ -11,6 +11,12 @@ import Proton, {
 } from 'proton-engine';
 import { SpriteManager } from './SpriteManager';
 import { AudioManager } from './AudioManager';
+import { InputManager } from './InputManager';
+import { BallPhysics, CollisionEvent } from './GameLogic';
+import { Renderer } from './Renderer';
+import { BrickManager } from './BrickManager';
+import { GameStateManager } from './GameStateManager';
+import { GameState, GameStateValue, Ball, Paddle, Brick } from './GameTypes';
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -18,8 +24,15 @@ export class Game {
   private proton: Proton;
   private emitter: Emitter;
   private renderer: CanvasRenderer;
+  private gameRenderer: Renderer;
   private spriteManager: SpriteManager;
   private audioManager: AudioManager;
+  private inputManager!: InputManager;
+  private brickManager!: BrickManager;
+  private gameStateManager!: GameStateManager;
+  private ballPhysics: BallPhysics;
+  private gameState: GameState;
+  private lastTime: number = 0;
 
   constructor(private container: HTMLElement) {
     this.canvas = document.createElement('canvas');
@@ -41,6 +54,18 @@ export class Game {
 
     this.spriteManager = new SpriteManager();
     this.audioManager = new AudioManager();
+    this.ballPhysics = new BallPhysics();
+
+    // Initialize game state first so we can create renderer with proper dimensions
+    this.gameState = this.initializeGameState();
+
+    // Create game renderer
+    this.gameRenderer = new Renderer(
+      this.ctx,
+      this.spriteManager,
+      this.canvas.width,
+      this.canvas.height
+    );
 
     this.emitter = this.createEmitter();
     this.proton.addEmitter(this.emitter);
@@ -49,6 +74,16 @@ export class Game {
   async init(): Promise<void> {
     await this.spriteManager.load();
     await this.audioManager.load();
+    this.inputManager = new InputManager();
+    
+    // Initialize brick manager after sprite manager loads
+    const { clientWidth, clientHeight } = this.container;
+    this.brickManager = new BrickManager(clientWidth, clientHeight);
+    this.gameState.bricks = this.brickManager.createBrickGrid();
+    
+    // Initialize game state manager
+    this.gameStateManager = new GameStateManager();
+    
     this.resize();
     window.addEventListener('resize', () => this.resize());
     // Start emitting particles
@@ -59,6 +94,10 @@ export class Game {
       'click',
       () => {
         this.audioManager.play('click');
+        // Start game from menu on click
+        if (this.gameState.gameState === 'menu') {
+          this.gameStateManager.startGame(this.gameState);
+        }
       },
       { once: false }
     );
@@ -78,53 +117,141 @@ export class Game {
     return emitter;
   }
 
+  private emitParticles(x: number, y: number, count: number): void {
+    if (this.emitter) {
+      this.emitter.p.x = x;
+      this.emitter.p.y = y;
+      this.emitter.emit(count);
+    }
+  }
+
   private update(): void {
+    const currentTime = performance.now();
+    const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.016); // Cap at ~60fps
+    this.lastTime = currentTime;
+
+    // Handle state transitions and user input
+    this.gameStateManager.handleStateTransition(
+      this.gameState,
+      this.ballPhysics,
+      this.brickManager,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    // Handle restart input (R key)
+    if (this.inputManager.isKeyPressed('r')) {
+      if (this.gameState.gameState === 'gameover' || this.gameState.gameState === 'win') {
+        this.gameStateManager.resetGame(this.gameState, this.brickManager);
+      }
+    }
+
+    // Handle start input (Space or Enter from menu)
+    if (this.gameState.gameState === 'menu') {
+      if (this.inputManager.isKeyPressed(' ') || this.inputManager.isKeyPressed('enter')) {
+        this.gameStateManager.startGame(this.gameState);
+      }
+    }
+
+    // Update game logic only when playing
+    if (this.gameState.gameState === 'playing') {
+      this.updateGameLogic(deltaTime);
+    }
+
     // Update and render particles first
     this.proton.update();
 
-    // Then draw sprites on top
-    this.drawGameSprites();
+    // Then render game objects and HUD
+    this.gameRenderer.renderGame(this.gameState);
+    this.gameRenderer.renderHUD(this.gameState);
 
     requestAnimationFrame(() => this.update());
   }
 
-  private drawGameSprites(): void {
+  private updateGameLogic(deltaTime: number): void {
+    const { ball, paddle, bricks } = this.gameState;
     const { clientWidth, clientHeight } = this.container;
 
-    // Draw a few sample bricks in a grid
-    const brickColors = [
-      'brick-red',
-      'brick-orange',
-      'brick-yellow',
-      'brick-green',
-      'brick-cyan',
-      'brick-blue',
-    ];
-    const startY = 40;
-    const startX = 40;
-
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 3; col++) {
-        const colorIndex = (row * 3 + col) % brickColors.length;
-        const color = brickColors[colorIndex];
-        const x = startX + col * 80;
-        const y = startY + row * 50;
-        this.spriteManager.draw(this.ctx, color, x, y, 0.8);
-      }
+    // Handle paddle input
+    const input = this.inputManager.getInputVector();
+    if (input.left) {
+      paddle.x = Math.max(0, paddle.x - paddle.speed);
+    }
+    if (input.right) {
+      paddle.x = Math.min(clientWidth - paddle.width, paddle.x + paddle.speed);
     }
 
-    // Draw the paddle at the bottom
-    const paddleX = clientWidth / 2 - 32;
-    const paddleY = clientHeight - 40;
-    this.spriteManager.draw(this.ctx, 'paddle-normal', paddleX, paddleY, 1);
+    // Update ball position
+    this.ballPhysics.updateBallPosition(ball, deltaTime);
 
-    // Draw a ball
-    const ballX = clientWidth / 2 - 8;
-    const ballY = clientHeight / 2;
-    this.spriteManager.draw(this.ctx, 'ball', ballX, ballY, 1.5);
+    // Check wall collisions (includes falling off bottom)
+    const ballFellOff = this.ballPhysics.checkWallCollisions(ball, clientWidth, clientHeight);
+    if (ballFellOff) {
+      this.gameState.lives--;
+      this.audioManager.play('click');
+      if (this.gameState.lives <= 0) {
+        this.gameState.gameState = 'gameover';
+      } else {
+        // Reset ball on paddle
+        this.gameState.ball = this.ballPhysics.resetBall(paddle);
+      }
+      return;
+    }
 
-    // Draw a heart
-    this.spriteManager.draw(this.ctx, 'heart', 20, 20, 1.5);
+    // Check paddle collision
+    const paddleCollision = this.ballPhysics.checkPaddleCollision(ball, paddle);
+    if (paddleCollision) {
+      this.audioManager.play('click');
+      this.emitParticles(paddleCollision.x, paddleCollision.y, 8);
+    }
+
+    // Check brick collisions
+    const brickResult = this.ballPhysics.checkBrickCollisions(ball, bricks);
+    this.gameState.score += brickResult.score;
+    for (const collision of brickResult.collisions) {
+      this.audioManager.play('click');
+      this.emitParticles(collision.x, collision.y, 6);
+    }
+
+    // Check win condition
+    if (this.gameState.bricks.every(b => b.destroyed)) {
+      this.gameState.gameState = 'win';
+      this.audioManager.play('click');
+      this.emitParticles(clientWidth / 2, clientHeight / 2, 20);
+    }
+  }
+
+  private initializeGameState(): GameState {
+    const { clientWidth, clientHeight } = this.container;
+
+    // Create paddle
+    const paddle: Paddle = {
+      x: clientWidth / 2 - 32,
+      y: clientHeight - 40,
+      width: 64,
+      height: 16,
+      speed: 5,
+      sprite: 'paddle-normal',
+    };
+
+    // Create ball
+    const ball: Ball = {
+      x: paddle.x + paddle.width / 2,
+      y: paddle.y - 20,
+      vx: 2,
+      vy: -3,
+      radius: 8,
+      sprite: 'ball',
+    };
+
+    return {
+      ball,
+      paddle,
+      bricks: [],
+      score: 0,
+      lives: 3,
+      gameState: 'menu',
+    };
   }
 
   private resize(): void {
@@ -134,13 +261,33 @@ export class Game {
     this.canvas.width = clientWidth;
     this.canvas.height = clientHeight;
 
+    // Update renderer dimensions
+    this.gameRenderer.updateCanvasDimensions(clientWidth, clientHeight);
+
     if (this.emitter) {
       this.emitter.p.x = clientWidth / 2;
       this.emitter.p.y = clientHeight / 2;
     }
+
+    // Re-center paddle and ball on resize
+    this.gameState.paddle.x = clientWidth / 2 - 32;
+    this.gameState.paddle.y = clientHeight - 40;
+    this.gameState.ball.x = this.gameState.paddle.x + this.gameState.paddle.width / 2;
+    this.gameState.ball.y = this.gameState.paddle.y - 20;
   }
 
   getCanvas(): HTMLCanvasElement {
     return this.canvas;
+  }
+
+  getGameState() {
+    return {
+      ball: this.gameState.ball,
+      paddle: this.gameState.paddle,
+      bricks: this.gameState.bricks,
+      score: this.gameState.score,
+      lives: this.gameState.lives,
+      gameState: this.gameState.gameState,
+    };
   }
 }
