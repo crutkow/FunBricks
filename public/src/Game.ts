@@ -238,8 +238,8 @@ export class Game {
     const ball: Ball = {
       x: paddle.x + paddle.width / 2,
       y: paddle.y - 20,
-      vx: 2,
-      vy: -3,
+      vx: 200,
+      vy: -300,
       radius: 8,
       sprite: 'ball',
     };
