@@ -7,22 +7,24 @@ declare module 'proton-engine' {
     fps?: number;
   }
 
-  export class Emitter {
+    export class Emitter {
     constructor();
     p: { x: number; y: number };
     rate: Rate;
     addInitialize(init: any): void;
     addBehaviour(behaviour: any): void;
-    emit(count?: number): void;
+    emit(totalEmitTimes?: number | string, life?: number | string): void;
+    stopEmit(): void;
+    removeAllParticles(): void;
     preEmit?: (callback: () => void) => void;
   }
 
-  export class Rate {
-    constructor(span: Span, life?: number);
+    export class Rate {
+    constructor(numpan: Span | number, timepan?: Span | number);
   }
 
   export class Span {
-    constructor(min: number, max: number);
+    constructor(min: number, max?: number, center?: boolean);
   }
 
   export class Radius {
