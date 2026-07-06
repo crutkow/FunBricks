@@ -1,0 +1,55 @@
+FUNBRICKS – PITCH GDD
+Version: 1.1 (Short Form)
+
+1) GAME PITCH
+FunBricks is a polished browser-based brick breaker built for fast, satisfying arcade sessions. Players control a paddle, launch a ball, break colorful brick rows, and chase higher scores before running out of lives.
+
+Core promise: classic gameplay feel + modern juice (particles, crisp sprites, and punchy SFX).
+
+2) TARGET EXPERIENCE
+- Easy to learn in seconds
+- Skill-based control through paddle-angle ball reflection
+- High replayability through score chasing
+- Short, snackable sessions (2–8 minutes)
+
+3) CORE LOOP
+1. Start in READY state with ball on paddle
+2. Launch ball (Space/click)
+3. Keep ball alive while breaking bricks
+4. Earn points per brick (higher rows = higher value)
+5. Lose a life if the ball falls offscreen
+6. Win by clearing all bricks; lose at 0 lives
+7. Restart instantly from win/lose screen
+
+4) KEY FEATURES (CURRENT BUILD)
+- Responsive controls: keyboard + pointer/touch
+- 4 game states: Ready, Playing, Won, Game Over
+- Score + 3-life HUD loop
+- Particle burst effects on brick break
+- Runtime audio feedback (hit, point, win)
+- Responsive canvas + resize-safe layout
+
+5) DESIGN PILLARS
+- Precision: paddle placement meaningfully changes bounce angle
+- Clarity: game state and goals always obvious
+- Momentum: minimal downtime between attempts
+- Feedback: every interaction feels audiovisual reward
+
+6) CURRENT CONTENT
+- Single arcade board (6x9 brick grid)
+- Row-based score weighting
+- Full restart flow and basic automated smoke tests
+
+7) ROADMAP (NEXT)
+- Power-ups (multi-ball, paddle expand, speed control)
+- Multi-level progression
+- High score persistence (local storage)
+- Difficulty ramp and combo scoring
+
+8) SUCCESS CRITERIA
+- Player reaches active play in under 10 seconds
+- Stable performance at smooth framerate on modern browsers
+- Reliable win/lose/restart loop
+- Controls feel immediate on desktop and touch devices
+
+End of pitch GDD.
